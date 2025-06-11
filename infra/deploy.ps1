@@ -1,115 +1,67 @@
-param(
-    [Parameter()]
-    [string]$ResourceGroupName = "rg-jabberwocky-agent-dev",
-    
-    [Parameter()]
-    [string]$Location = "eastus",
-    
-    [Parameter()]
-    [string]$EnvironmentName = "dev",
-    
-    [Parameter()]
-    [string]$BaseName = "jabberwocky"
-)
+Write-Host "Deploying the Azure resources..."
 
-$ErrorActionPreference = "Stop"
+# Define resource group parameters
+$RG_LOCATION = "eastus"
+$MODEL_NAME = "gpt-4o"
+$MODEL_VERSION = "2024-11-20"
+$AI_PROJECT_FRIENDLY_NAME = "Custom Agent"
+$MODEL_CAPACITY = 140
 
-Write-Host "Starting deployment of Jabberwocky AI Agent infrastructure..." -ForegroundColor Cyan
+# Deploy the Azure resources and save output to JSON
+az deployment sub create `
+  --name "custom-agent-deployment" `
+  --location "$RG_LOCATION" `
+  --template-file main.bicep `
+  --parameters `
+      aiProjectFriendlyName="$AI_PROJECT_FRIENDLY_NAME" `
+      modelName="$MODEL_NAME" `
+      modelCapacity="$MODEL_CAPACITY" `
+      modelVersion="$MODEL_VERSION" `
+      location="$RG_LOCATION" | Out-File -FilePath output.json -Encoding utf8
 
-# Check if Az module is installed
-if (-not (Get-Module -ListAvailable -Name Az)) {
-    Write-Error "The Az PowerShell module is not installed. Please run 'Install-Module -Name Az -AllowClobber -Scope CurrentUser' to install it."
+# Parse the JSON file using native PowerShell cmdlets
+if (-not (Test-Path -Path output.json)) {
+    Write-Host "Error: output.json not found."
+    exit -1
+}
+
+$jsonData = Get-Content output.json -Raw | ConvertFrom-Json
+$outputs = $jsonData.properties.outputs
+
+# Extract values from the JSON object
+$projectsEndpoint = $outputs.projectsEndpoint.value
+$resourceGroupName = $outputs.resourceGroupName.value
+
+if ([string]::IsNullOrEmpty($projectsEndpoint)) {
+    Write-Host "Error: projectsEndpoint not found. Possible deployment failure."
+    exit -1
+}
+
+# Set the C# project path
+$CSHARP_PROJECT_PATH = "../CustomAgent.csproj"
+
+# Set the user secrets for the C# project
+dotnet user-secrets set "Azure:Endpoint" "$projectsEndpoint" --project "$CSHARP_PROJECT_PATH"
+dotnet user-secrets set "Azure:ModelName" "$MODEL_NAME" --project "$CSHARP_PROJECT_PATH"
+
+# Delete the output.json file
+Remove-Item -Path output.json -Force
+
+Write-Host "Adding Azure AI Developer user role"
+
+# Set Variables
+$subId = az account show --query id --output tsv
+$objectId = az ad signed-in-user show --query id -o tsv
+
+$roleResult = az role assignment create --role "f6c7c914-8db3-469d-8ca1-694a8f32e121" `
+                        --assignee-object-id "$objectId" `
+                        --scope "subscriptions/$subId/resourceGroups/$resourceGroupName" `
+                        --assignee-principal-type 'User'
+
+# Check if the command failed
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "User role assignment failed."
     exit 1
 }
 
-# Check if user is logged in to Azure
-try {
-    $context = Get-AzContext
-    if (-not $context) {
-        Write-Host "Not logged in to Azure. Please login..." -ForegroundColor Yellow
-        Connect-AzAccount
-    }
-    else {
-        Write-Host "Already logged in as $($context.Account)" -ForegroundColor Green
-    }
-}
-catch {
-    Write-Host "Not logged in to Azure. Please login..." -ForegroundColor Yellow
-    Connect-AzAccount
-}
-
-# Create or check resource group
-try {
-    $resourceGroup = Get-AzResourceGroup -Name $ResourceGroupName -ErrorAction SilentlyContinue
-    if (-not $resourceGroup) {
-        Write-Host "Creating resource group $ResourceGroupName in location $Location..." -ForegroundColor Yellow
-        $resourceGroup = New-AzResourceGroup -Name $ResourceGroupName -Location $Location
-    }
-    else {
-        Write-Host "Resource group $ResourceGroupName already exists." -ForegroundColor Green
-    }
-}
-catch {
-    Write-Error "Failed to create or check resource group: $_"
-    exit 1
-}
-
-# Deploy Bicep template
-try {
-    Write-Host "Deploying infrastructure using Bicep templates..." -ForegroundColor Yellow
-    
-    $deploymentName = "jabberwocky-deployment-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-    $templateFile = Join-Path $PSScriptRoot "main.bicep"
-    $parameterFile = Join-Path $PSScriptRoot "main.parameters.json"
-    
-    # Override parameters if provided
-    $additionalParams = @{}
-    if ($EnvironmentName) {
-        $additionalParams["environmentName"] = $EnvironmentName
-    }
-    if ($BaseName) {
-        $additionalParams["baseName"] = $BaseName
-    }
-    
-    $deployment = New-AzResourceGroupDeployment `
-        -Name $deploymentName `
-        -ResourceGroupName $ResourceGroupName `
-        -TemplateFile $templateFile `
-        -TemplateParameterFile $parameterFile `
-        @additionalParams `
-        -Verbose
-    
-    # Display deployment outputs
-    Write-Host "Deployment completed successfully!" -ForegroundColor Green
-    Write-Host "AI Foundry Project Name: $($deployment.Outputs.aiFoundryProjectName.Value)" -ForegroundColor Cyan
-    Write-Host "AI Foundry Project Endpoint: $($deployment.Outputs.aiFoundryProjectEndpoint.Value)" -ForegroundColor Cyan
-    Write-Host "AI Agent Service Connection: $($deployment.Outputs.aiAgentServiceConnection.Value)" -ForegroundColor Cyan
-    Write-Host "Available Models:" -ForegroundColor Cyan
-    $deployment.Outputs.availableModels.Value | ForEach-Object {
-        Write-Host "  - $_" -ForegroundColor Cyan
-    }
-    
-    # Set up the secrets for the application
-    Write-Host "`nDo you want to set up the user secrets for the application? (Y/N)" -ForegroundColor Yellow
-    $setupSecrets = Read-Host
-    
-    if ($setupSecrets -eq "Y" -or $setupSecrets -eq "y") {
-        $connectionString = $deployment.Outputs.aiAgentServiceConnection.Value
-        $modelName = $deployment.Outputs.availableModels.Value[0] # Default to first model (GPT-4)
-        
-        Write-Host "Setting up secrets using: $connectionString and $modelName" -ForegroundColor Yellow
-        
-        # Navigate up one directory to the project root
-        $projectRootPath = Split-Path -Parent $PSScriptRoot
-        Set-Location $projectRootPath
-        
-        # Run the setup_secrets.ps1 script
-        & "$projectRootPath\setup_secrets.ps1" -Endpoint $connectionString -ModelName $modelName
-    }
-
-    return $deployment.Outputs
-}
-catch {
-    Write-Error "Deployment failed: $_"
-    exit 1
-}
+Write-Host "User role assignment succeeded."

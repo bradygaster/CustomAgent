@@ -12,7 +12,7 @@ var configuration = builder.Build();
 
 // Get connection details from configuration
 string apiDeploymentName = configuration["Azure:ModelName"] ?? throw new InvalidOperationException("Azure:ModelName is not set in the configuration. Use 'dotnet user-secrets set \"Azure:ModelName\" \"your-model-name\"'");
-string endpoint = configuration.GetConnectionString("AiAgentService") ?? throw new InvalidOperationException("AiAgentService connection string is not set in the configuration. Use 'dotnet user-secrets set \"ConnectionStrings:AiAgentService\" \"your-endpoint\"'");
+string endpoint = configuration["Azure:Endpoint"] ?? throw new InvalidOperationException("Azure:Endpoint is not set in the configuration. Use 'dotnet user-secrets set \"Azure:Endpoint\" \"your-endpoint\"'");
 
 Console.WriteLine("Jabberwocky AI Agent");
 Console.WriteLine("------------------");

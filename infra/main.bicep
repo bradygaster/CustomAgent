@@ -1,43 +1,100 @@
-// main.bicep - Root deployment template for Jabberwocky AI Agent resources
+targetScope = 'subscription'
 
-@description('The Azure region for deploying resources')
-param location string = resourceGroup().location
+// Parameters
+@description('Prefix for the resource group and resources')
+param resourcePrefix string = 'agent-workshop'
 
-@description('Environment name used for resource naming (e.g. dev, test, prod)')
-@allowed([
-  'dev'
-  'test'
-  'prod'
-])
-param environmentName string = 'dev'
+@description('Location of the resource group to create or use for the deployment')
+param location string = 'eastus'
 
-@description('Base name used for resource naming')
-param baseName string = 'jabberwocky'
+@description('Friendly name for your Azure AI resource')
+param aiProjectFriendlyName string = 'Agents standard project resource'
 
-@description('Tags to apply to all resources')
-param tags object = {
-  application: 'JabberwockyAgent'
-  environment: environmentName
+@description('Description of your Azure AI resource dispayed in Azure AI Foundry')
+param aiProjectDescription string = 'A standard project resource required for the agent setup.'
+
+@description('Set of tags to apply to all resources.')
+param tags object = {}
+
+@description('Model name for deployment')
+param modelName string = 'gpt-4o'
+
+@description('Model format for deployment')
+param modelFormat string = 'OpenAI'
+
+@description('Model version for deployment')
+param modelVersion string = '2024-11-20'
+
+@description('Model deployment SKU name')
+param modelSkuName string = 'GlobalStandard'
+
+@description('Model deployment capacity')
+param modelCapacity int = 140
+
+@description('Unique suffix for the resources')
+@maxLength(4)
+@minLength(0)
+param uniqueSuffix string = substring(uniqueString(subscription().id, resourcePrefix), 0, 4)
+
+var resourceGroupName = toLower('rg-${resourcePrefix}-${uniqueSuffix}')
+
+var defaultTags = {
+  source: 'Azure AI Foundry Agents Service lab'
 }
 
-// Generate unique name suffix based on resource group ID
-var uniqueSuffix = substring(uniqueString(resourceGroup().id), 0, 6)
-var resourceNameSuffix = '${environmentName}-${uniqueSuffix}'
+var rootTags = union(defaultTags, tags)
 
-// Import module files
-module aiFoundryModule 'modules/ai-foundry.bicep' = {
-  name: 'aiFoundryDeployment'
+// Create resource group
+resource rg 'Microsoft.Resources/resourceGroups@2024-11-01' = {
+  name: resourceGroupName
+  location: location
+}
+
+// Calculate the unique suffix
+var aiProjectName = toLower('project-${uniqueSuffix}')
+var foundryResourceName = toLower('foundry-${uniqueSuffix}')
+
+module foundry 'foundry.bicep' = {
+  name: 'foundry-account-deployment'
+  scope: rg
   params: {
+    aiProjectName: aiProjectName
     location: location
-    baseName: baseName
-    environmentName: environmentName
-    resourceNameSuffix: resourceNameSuffix
-    tags: tags
+    tags: rootTags
+    foundryResourceName: foundryResourceName
+  }
+}
+
+module foundryProject 'foundry-project.bicep' = {
+  name: 'foundry-project-deployment'
+  scope: rg
+  params: {
+    foundryResourceName: foundry.outputs.accountName
+    aiProjectName: aiProjectName
+    aiProjectFriendlyName: aiProjectFriendlyName
+    aiProjectDescription: aiProjectDescription
+    location: location
+    tags: rootTags
+  }
+}
+
+module foundryModelDeployment 'foundry-model-deployment.bicep' = {
+  name: 'foundry-model-deployment'
+  scope: rg
+  params: {
+    foundryResourceName: foundry.outputs.accountName
+    modelName: modelName
+    modelFormat: modelFormat
+    modelVersion: modelVersion
+    modelSkuName: modelSkuName
+    modelCapacity: modelCapacity
+    tags: rootTags
   }
 }
 
 // Outputs
-output aiFoundryProjectName string = aiFoundryModule.outputs.projectName
-output aiFoundryProjectEndpoint string = aiFoundryModule.outputs.projectEndpoint
-output aiAgentServiceConnection string = aiFoundryModule.outputs.agentServiceConnection
-output availableModels array = aiFoundryModule.outputs.availableModels
+output subscriptionId string = subscription().subscriptionId
+output resourceGroupName string = rg.name
+output aiAccountName string = foundry.outputs.accountName
+output aiProjectName string = foundryProject.outputs.aiProjectName
+output projectsEndpoint string = '${foundry.outputs.endpoint}api/projects/${foundryProject.outputs.aiProjectName}'
