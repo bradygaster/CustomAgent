@@ -15,15 +15,24 @@ $resourcePrefix = "custom-agent"
 
 # Get resource group created by up.ps1
 Write-Host "Looking for resource group created by up.ps1..."
-$deploymentName = "custom-agent-deployment"
+$deploymentName = "custom-agent-deployment-$(Get-Date -Format 'yyyyMMdd')"
 $deployment = az deployment sub show --name $deploymentName 2>$null | ConvertFrom-Json
+
+# If today's deployment isn't found, try with yesterday's date (in case it was deployed yesterday)
+if (-not $deployment) {
+    $yesterdayDate = (Get-Date).AddDays(-1).ToString('yyyyMMdd')
+    $deploymentName = "custom-agent-deployment-$yesterdayDate"
+    $deployment = az deployment sub show --name $deploymentName 2>$null | ConvertFrom-Json
+    if ($deployment) {
+        Write-Host "Found deployment from yesterday: $deploymentName" -ForegroundColor Green
+    }
+}
 
 if ($deployment) {
     # Get the resource group from the deployment outputs
     $resourceGroupName = $deployment.properties.outputs.resourceGroupName.value
     Write-Host "Found resource group from deployment: $resourceGroupName" -ForegroundColor Green
-} else {
-    # Fallback to looking for resource groups matching the pattern
+} else {    # Fallback to looking for resource groups matching the pattern
     Write-Host "No active deployment found. Looking for resource groups matching pattern 'rg-$resourcePrefix-*'..."
     $resourceGroups = az group list --query "[?starts_with(name, 'rg-$resourcePrefix-')].name" -o json | ConvertFrom-Json
     
@@ -42,9 +51,8 @@ if ($resourceGroupName -match "rg-$resourcePrefix-(.*)")
 {
     $uniqueSuffix = $Matches[1]
     Write-Host "Found resource group: $resourceGroupName with suffix: $uniqueSuffix"
-    
-    # 1. Get the Cognitive Services account name
-    $foundryResourceName = "foundry-$uniqueSuffix"
+      # 1. Get the Cognitive Services account name
+    $foundryResourceName = "ca-foundry-$uniqueSuffix"
     Write-Host "Cognitive Services account name: $foundryResourceName"
     
     # 2. Delete the resource group

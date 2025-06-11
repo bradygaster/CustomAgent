@@ -32,9 +32,9 @@ param modelSkuName string = 'GlobalStandard'
 param modelCapacity int = 140
 
 @description('Unique suffix for the resources')
-@maxLength(4)
+@maxLength(8)
 @minLength(0)
-param uniqueSuffix string = substring(uniqueString(subscription().id, resourcePrefix), 0, 4)
+param uniqueSuffix string = substring(uniqueString(subscription().id, resourcePrefix, deployment().name), 0, 8)
 
 var resourceGroupName = toLower('rg-${resourcePrefix}-${uniqueSuffix}')
 
@@ -51,8 +51,8 @@ resource rg 'Microsoft.Resources/resourceGroups@2024-11-01' = {
 }
 
 // Calculate the unique suffix
-var aiProjectName = toLower('project-${uniqueSuffix}')
-var foundryResourceName = toLower('foundry-${uniqueSuffix}')
+var aiProjectName = toLower('ca-project-${uniqueSuffix}')
+var foundryResourceName = toLower('ca-foundry-${uniqueSuffix}')
 
 module foundry 'foundry.bicep' = {
   name: 'foundry-account-deployment'

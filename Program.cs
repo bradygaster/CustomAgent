@@ -4,6 +4,17 @@ using Microsoft.Extensions.Configuration;
 using System.ClientModel;
 using System.Text.Json;
 
+// Configuration properties
+string AgentName = "Custom AI Agent";
+string DomainName = "the specified domain";
+string ToneStyle = "scholarly but approachable";
+float Temperature = 0.1f;
+float TopP = 0.1f;
+int MaxCompletionTokens = 4096;
+int MaxPromptTokens = 8192;
+string WelcomeMessage = "AI Agent Console";
+string PromptMessage = "Ask a question about the subject (type 'exit' to quit, 'save' to save the conversation):";
+
 // Load configuration
 var builder = new ConfigurationBuilder()
     .AddUserSecrets<Program>();
@@ -14,35 +25,72 @@ var configuration = builder.Build();
 string apiDeploymentName = configuration["Azure:ModelName"] ?? throw new InvalidOperationException("Azure:ModelName is not set in the configuration. Use 'dotnet user-secrets set \"Azure:ModelName\" \"your-model-name\"'");
 string endpoint = configuration["Azure:Endpoint"] ?? throw new InvalidOperationException("Azure:Endpoint is not set in the configuration. Use 'dotnet user-secrets set \"Azure:Endpoint\" \"your-endpoint\"'");
 
-Console.WriteLine("Jabberwocky AI Agent");
-Console.WriteLine("------------------");
+// Load optional configuration with defaults
+AgentName = configuration["Agent:Name"] ?? AgentName;
+DomainName = configuration["Agent:Domain"] ?? DomainName;
+ToneStyle = configuration["Agent:ToneStyle"] ?? ToneStyle;
+Temperature = ParseFloat(configuration["Agent:Temperature"], Temperature);
+TopP = ParseFloat(configuration["Agent:TopP"], TopP);
+MaxCompletionTokens = ParseInt(configuration["Agent:MaxCompletionTokens"], MaxCompletionTokens);
+MaxPromptTokens = ParseInt(configuration["Agent:MaxPromptTokens"], MaxPromptTokens);
+WelcomeMessage = configuration["UI:WelcomeMessage"] ?? WelcomeMessage;
+PromptMessage = configuration["UI:PromptMessage"] ?? PromptMessage;
+
+Console.WriteLine(WelcomeMessage);
+Console.WriteLine(new string('-', WelcomeMessage.Length));
 
 // Create the agent client
 PersistentAgentsClient agentClient = new(endpoint, new DefaultAzureCredential());
 
-// Load instructions files
-string knowledgeFolderPath = Path.Combine(AppContext.BaseDirectory, "knowledge");
-string instructionsPath = Path.Combine(knowledgeFolderPath, "instructions.md");
-string promptPath = Path.Combine(knowledgeFolderPath, "prompt.md");
+// Define file paths
+string promptsFolderPath = Path.Combine(AppContext.BaseDirectory, "prompts");
+string instructionsFolderPath = Path.Combine(AppContext.BaseDirectory, "instructions");
+string promptTemplatePath = Path.Combine(promptsFolderPath, "prompt_template.md");
 
-if (!File.Exists(instructionsPath) || !File.Exists(promptPath))
+// Get all instruction files
+List<string> instructionFiles = Directory.GetFiles(instructionsFolderPath, "*.md").ToList();
+
+// Check if files exist
+if (instructionFiles.Count == 0)
 {
     Console.ForegroundColor = ConsoleColor.Red;
-    Console.WriteLine("Instructions or prompt file not found. Ensure both files exist in the knowledge directory.");
+    Console.WriteLine("No instruction files found. Ensure at least one .md file exists in the instructions directory.");
     Console.ResetColor();
     return;
 }
 
-string jabberwockyInfo = File.ReadAllText(instructionsPath);
-string agentPrompt = File.ReadAllText(promptPath);
+if (!File.Exists(promptTemplatePath))
+{
+    Console.ForegroundColor = ConsoleColor.Red;
+    Console.WriteLine("Prompt template file not found. Ensure prompt_template.md exists in the prompts directory.");
+    Console.ResetColor();
+    return;
+}
+
+// Load instruction content
+List<string> contentList = new();
+foreach (var file in instructionFiles)
+{
+    string content = File.ReadAllText(file);
+    string fileName = Path.GetFileNameWithoutExtension(file);
+    contentList.Add($"## {fileName}\n{content}");
+}
+string instructionsContent = string.Join("\n\n", contentList);
+
+// Load and customize prompt template
+string promptTemplate = File.ReadAllText(promptTemplatePath);
+string customizedPrompt = promptTemplate
+    .Replace("{{DOMAIN_NAME}}", DomainName)
+    .Replace("{{TONE_STYLE}}", ToneStyle);
 
 // Debug output to verify files were loaded correctly
 Console.ForegroundColor = ConsoleColor.Cyan;
-Console.WriteLine($"Successfully loaded instructions ({jabberwockyInfo.Length} chars) and prompt ({agentPrompt.Length} chars) from knowledge folder");
+Console.WriteLine($"Successfully loaded {instructionFiles.Count} instruction files from instructions folder");
+Console.WriteLine($"Successfully loaded prompt template from prompts folder");
 Console.ResetColor();
 
 // Combine the instructions and prompt
-string combinedInstructions = $"{agentPrompt}\n\n# Knowledge Base\n{jabberwockyInfo}";
+string combinedInstructions = $"{customizedPrompt}\n\n# Knowledge Base\n{instructionsContent}";
 
 Console.ForegroundColor = ConsoleColor.Cyan;
 Console.WriteLine("Creating agent...");
@@ -53,9 +101,9 @@ try
     // Create the agent
     PersistentAgent agent = await agentClient.Administration.CreateAgentAsync(
         model: apiDeploymentName,
-        name: "Jabberwocky Expert",
+        name: AgentName,
         instructions: combinedInstructions,
-        temperature: 0.1f
+        temperature: Temperature
     );
 
     Console.ForegroundColor = ConsoleColor.Green;
@@ -78,7 +126,7 @@ bool keepRunning = true;
 while (keepRunning)
 {
     Console.ForegroundColor = ConsoleColor.Yellow;
-    Console.WriteLine("\nAsk a question about the Jabberwocky (type 'exit' to quit, 'save' to save the conversation):");
+    Console.WriteLine($"\n{PromptMessage}");
     Console.ResetColor();
     
     string? prompt = Console.ReadLine();
@@ -107,16 +155,14 @@ while (keepRunning)
         threadId: thread.Id,
         role: MessageRole.User,
         content: prompt
-    );
-
-    // Start the agent's run on the thread
+    );    // Start the agent's run on the thread
     AsyncCollectionResult<StreamingUpdate> streamingUpdate = agentClient.Runs.CreateRunStreamingAsync(
         threadId: thread.Id,
         agentId: agent.Id,
-        maxCompletionTokens: 4096,
-        maxPromptTokens: 8192,
-        temperature: 0.1f,
-        topP: 0.1f
+        maxCompletionTokens: MaxCompletionTokens,
+        maxPromptTokens: MaxPromptTokens,
+        temperature: Temperature,
+        topP: TopP
     );
 
     // Handle the streaming response
@@ -145,6 +191,25 @@ catch (Exception ex)
     Console.WriteLine("Please ensure you have the necessary Azure permissions and credentials configured.");
     Console.ResetColor();
     return;
+}
+
+// Helper methods for configuration parsing
+static float ParseFloat(string? value, float defaultValue)
+{
+    if (string.IsNullOrEmpty(value) || !float.TryParse(value, out float result))
+    {
+        return defaultValue;
+    }
+    return result;
+}
+
+static int ParseInt(string? value, int defaultValue)
+{
+    if (string.IsNullOrEmpty(value) || !int.TryParse(value, out int result))
+    {
+        return defaultValue;
+    }
+    return result;
 }
 
 // Handler for streaming updates

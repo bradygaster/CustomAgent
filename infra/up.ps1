@@ -17,7 +17,7 @@ $MODEL_CAPACITY = 140
 
 # Deploy the Azure resources and save output to JSON
 az deployment sub create `
-  --name "custom-agent-deployment" `
+  --name "custom-agent-deployment-$(Get-Date -Format 'yyyyMMdd')" `
   --location "$RG_LOCATION" `  --template-file "$scriptDir\main.bicep" `
   --parameters `
       aiProjectFriendlyName="$AI_PROJECT_FRIENDLY_NAME" `
@@ -76,3 +76,35 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "User role assignment succeeded."
+
+# Verify static content files exist
+Write-Host "Verifying prompt and instruction files exist..."
+
+$promptDirPath = Join-Path -Path $scriptDir -ChildPath "..\prompts"
+$instructionsDirPath = Join-Path -Path $scriptDir -ChildPath "..\instructions"
+$promptTemplatePath = Join-Path -Path $promptDirPath -ChildPath "prompt_template.md"
+
+# Check if directories and files exist
+if (-not (Test-Path -Path $promptDirPath)) {
+    Write-Host "Warning: prompts directory not found at $promptDirPath"
+    Write-Host "Please ensure the prompts directory exists with appropriate template files."
+}
+
+if (-not (Test-Path -Path $instructionsDirPath)) {
+    Write-Host "Warning: instructions directory not found at $instructionsDirPath"
+    Write-Host "Please ensure the instructions directory exists with appropriate markdown files."
+}
+
+if (-not (Test-Path -Path $promptTemplatePath)) {
+    Write-Host "Warning: prompt_template.md not found at $promptTemplatePath"
+    Write-Host "Please ensure the prompt template file exists."
+}
+
+# Set default agent configuration
+dotnet user-secrets set "Agent:Name" "Jabberwocky Expert" --project "$CSHARP_PROJECT_PATH"
+dotnet user-secrets set "Agent:Domain" "the Jabberwocky" --project "$CSHARP_PROJECT_PATH"
+dotnet user-secrets set "Agent:ToneStyle" "scholarly but approachable" --project "$CSHARP_PROJECT_PATH"
+dotnet user-secrets set "UI:WelcomeMessage" "Jabberwocky AI Agent" --project "$CSHARP_PROJECT_PATH"
+dotnet user-secrets set "UI:PromptMessage" "Ask a question about the Jabberwocky (type 'exit' to quit, 'save' to save the conversation):" --project "$CSHARP_PROJECT_PATH"
+
+Write-Host "Agent configuration completed successfully."

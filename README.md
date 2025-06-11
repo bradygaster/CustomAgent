@@ -1,13 +1,14 @@
-# Jabberwocky AI Agent
+# Custom AI Agent Framework
 
-This repository contains a custom AI agent built using Azure's Persistent Agent capabilities. The agent specializes in knowledge about the mythical creature "Jabberwocky" from Lewis Carroll's poem and can answer questions about its literary origins, physical description, cultural impact, and the poem itself.
+This repository contains a flexible AI agent framework built using Azure's Persistent Agent capabilities. The agent can be configured to specialize in any knowledge domain, allowing you to create custom AI assistants with specific expertise.
 
 ## Project Structure
 
 - `Program.cs` - The main C# application that creates and interacts with the AI agent
-- `knowledge/` - Directory containing the agent's knowledge base
-  - `instructions.md` - Information about the Jabberwocky that serves as the agent's knowledge
-  - `prompt.md` - Instructions that define the agent's behavior and responses
+- `instructions/` - Directory containing the agent's knowledge base as markdown files
+  - `*.md` - Markdown files containing domain-specific knowledge
+- `prompts/` - Directory containing prompt templates
+  - `prompt_template.md` - Configurable template for defining agent behaviors
 - `infra/` - Infrastructure as Code for Azure deployment
   - `up.ps1` - PowerShell script to provision Azure resources
   - `down.ps1` - PowerShell script to tear down Azure resources
@@ -47,6 +48,20 @@ The `up.ps1` script automatically sets the required user secrets, so you don't n
 - `Azure:ModelName` - The name of the AI model for the agent
 - `Azure:Endpoint` - The Azure endpoint URL for accessing the agent service
 
+### 2. Provision Resources
+
+When you run the provisioning script, it will:
+
+1. Create Azure resources needed for the agent
+2. Verify that the prompt and instruction files exist
+3. Configure default settings for the agent
+
+```powershell
+.\infra\up.ps1
+```
+
+Make sure you have the necessary files in the `prompts` and `instructions` directories before running the script.
+
 ### 3. Build and Run the Application
 
 ```powershell
@@ -59,23 +74,95 @@ dotnet run
 Here's what a typical interaction with the agent looks like:
 
 ```
-Jabberwocky AI Agent
-------------------
-Successfully loaded instructions (3166 chars) and prompt (1370 chars) from knowledge folder
+AI Agent Console
+---------------
+Successfully loaded 2 instruction files from instructions folder
+Successfully loaded prompt template from prompts folder
 Creating agent...
 Agent created with ID: agent_abc123xyz789
 Creating conversation thread...
 Thread created with ID: thread_456def789ghi
 
-Ask a question about the Jabberwocky (type 'exit' to quit, 'save' to save the conversation):
-What is the Jabberwocky?
+Ask a question about the subject (type 'exit' to quit, 'save' to save the conversation):
+What can you tell me about this topic?
 
-The Jabberwocky is a legendary creature that originated in Lewis Carroll's novel "Through the Looking-Glass, and What Alice Found There" (1871), which was the sequel to "Alice's Adventures in Wonderland." 
+Based on the information in my knowledge base, I can provide you with detailed information about [domain-specific response based on loaded knowledge files]...
 
-It's described as a fearsome monster with "jaws that bite" and "claws that catch," and is said to have eyes of flame. In the famous illustration by John Tenniel that accompanied the original text, the Jabberwocky appears as a dragon-like creature with a long neck, scales, wings, and a vest. It stands upright like a human but has features of various reptilian and avian creatures combined.
-
-Ask a question about the Jabberwocky (type 'exit' to quit, 'save' to save the conversation):
+Ask a question about the subject (type 'exit' to quit, 'save' to save the conversation):
 exit
+```
+
+## Configuration
+
+The application supports the following configuration options through user secrets:
+
+### Required Settings
+
+```powershell
+dotnet user-secrets set "Azure:ModelName" "your-model-name"
+dotnet user-secrets set "Azure:Endpoint" "your-endpoint"
+```
+
+### Optional Settings
+
+```powershell
+# Agent settings
+dotnet user-secrets set "Agent:Name" "Your Agent Name"
+dotnet user-secrets set "Agent:Domain" "your specialized domain name"
+dotnet user-secrets set "Agent:ToneStyle" "scholarly but approachable"
+dotnet user-secrets set "Agent:Temperature" "0.1"
+dotnet user-secrets set "Agent:TopP" "0.1"
+dotnet user-secrets set "Agent:MaxCompletionTokens" "4096"
+dotnet user-secrets set "Agent:MaxPromptTokens" "8192"
+
+# UI settings
+dotnet user-secrets set "UI:WelcomeMessage" "Your Custom Welcome Message"
+dotnet user-secrets set "UI:PromptMessage" "Your custom prompt message"
+```
+
+## Files Structure
+
+### Instructions Files
+
+Each markdown file in the `instructions/` directory will be loaded as part of the agent's knowledge base. The filename will be used as a section title in the knowledge base. You can add multiple instruction files, and they will all be combined into the agent's knowledge base.
+
+The repository includes two example instruction files:
+- `instructions/jabberwocky.md` - Basic information about the Jabberwocky
+- `instructions/advanced_analysis.md` - More detailed analysis of the Jabberwocky poem
+
+### Prompt Template
+
+The `prompts/prompt_template.md` is a special file that defines the agent's behavior. It uses placeholders like `{{DOMAIN_NAME}}` and `{{TONE_STYLE}}` that will be replaced with your configuration values.
+
+This template allows you to create a specialized agent without modifying the code.
+
+## Customizing Content
+
+The application comes with seed content about the Jabberwocky by default. This content is stored as static files in the repository.
+
+If you want to change the default content to your own domain:
+
+1. Edit the files in the `prompts` directory to customize the agent's behavior
+   - `prompt_template.md` - Template that defines how the agent behaves
+   
+2. Edit or add files in the `instructions` directory to provide domain-specific knowledge
+   - `jabberwocky.md` - Basic information about the Jabberwocky
+   - `advanced_analysis.md` - More detailed analysis of the Jabberwocky poem
+   
+3. You can also modify the default agent configuration in `up.ps1` to match your content:
+   - Agent name
+   - Domain name
+   - Tone style
+   - Welcome and prompt messages
+
+This approach allows you to distribute a pre-configured agent with your own specialized knowledge domain.
+
+You can also modify the default agent configuration settings in the user secrets section at the end of the script:
+```powershell
+# Set default agent configuration
+dotnet user-secrets set "Agent:Name" "Your Expert Name" --project "$CSHARP_PROJECT_PATH"
+dotnet user-secrets set "Agent:Domain" "your specialized domain" --project "$CSHARP_PROJECT_PATH"
+# ... other settings
 ```
 
 ## Cleanup
