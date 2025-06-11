@@ -1,4 +1,12 @@
+#!/usr/bin/env pwsh
+# up.ps1
+# This script deploys Azure resources for the Custom Agent project
+
 Write-Host "Deploying the Azure resources..."
+
+# Determine the script's directory to use proper paths regardless of where the script is called from
+$scriptDir = $PSScriptRoot
+Write-Host "Script directory: $scriptDir"
 
 # Define resource group parameters
 $RG_LOCATION = "eastus"
@@ -10,22 +18,22 @@ $MODEL_CAPACITY = 140
 # Deploy the Azure resources and save output to JSON
 az deployment sub create `
   --name "custom-agent-deployment" `
-  --location "$RG_LOCATION" `
-  --template-file main.bicep `
+  --location "$RG_LOCATION" `  --template-file "$scriptDir\main.bicep" `
   --parameters `
       aiProjectFriendlyName="$AI_PROJECT_FRIENDLY_NAME" `
       modelName="$MODEL_NAME" `
       modelCapacity="$MODEL_CAPACITY" `
       modelVersion="$MODEL_VERSION" `
-      location="$RG_LOCATION" | Out-File -FilePath output.json -Encoding utf8
+      location="$RG_LOCATION" | Out-File -FilePath "$scriptDir\output.json" -Encoding utf8
 
 # Parse the JSON file using native PowerShell cmdlets
-if (-not (Test-Path -Path output.json)) {
+$outputJsonPath = Join-Path -Path $scriptDir -ChildPath "output.json"
+if (-not (Test-Path -Path $outputJsonPath)) {
     Write-Host "Error: output.json not found."
     exit -1
 }
 
-$jsonData = Get-Content output.json -Raw | ConvertFrom-Json
+$jsonData = Get-Content $outputJsonPath -Raw | ConvertFrom-Json
 $outputs = $jsonData.properties.outputs
 
 # Extract values from the JSON object
@@ -37,15 +45,18 @@ if ([string]::IsNullOrEmpty($projectsEndpoint)) {
     exit -1
 }
 
-# Set the C# project path
-$CSHARP_PROJECT_PATH = "../CustomAgent.csproj"
+# Set the C# project path relative to the script directory
+$CSHARP_PROJECT_PATH = Join-Path -Path $scriptDir -ChildPath "..\CustomAgent.csproj"
 
 # Set the user secrets for the C# project
 dotnet user-secrets set "Azure:Endpoint" "$projectsEndpoint" --project "$CSHARP_PROJECT_PATH"
 dotnet user-secrets set "Azure:ModelName" "$MODEL_NAME" --project "$CSHARP_PROJECT_PATH"
 
 # Delete the output.json file
-Remove-Item -Path output.json -Force
+$outputJsonPath = Join-Path -Path $scriptDir -ChildPath "output.json"
+if (Test-Path -Path $outputJsonPath) {
+    Remove-Item -Path $outputJsonPath -Force
+}
 
 Write-Host "Adding Azure AI Developer user role"
 

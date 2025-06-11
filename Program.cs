@@ -21,19 +21,25 @@ Console.WriteLine("------------------");
 PersistentAgentsClient agentClient = new(endpoint, new DefaultAzureCredential());
 
 // Load instructions files
-string instructionsPath = Path.Combine(AppContext.BaseDirectory, "instructions.md");
-string promptPath = Path.Combine(AppContext.BaseDirectory, "prompt.md");
+string knowledgeFolderPath = Path.Combine(AppContext.BaseDirectory, "knowledge");
+string instructionsPath = Path.Combine(knowledgeFolderPath, "instructions.md");
+string promptPath = Path.Combine(knowledgeFolderPath, "prompt.md");
 
 if (!File.Exists(instructionsPath) || !File.Exists(promptPath))
 {
     Console.ForegroundColor = ConsoleColor.Red;
-    Console.WriteLine("Instructions or prompt file not found. Ensure both files exist in the application directory.");
+    Console.WriteLine("Instructions or prompt file not found. Ensure both files exist in the knowledge directory.");
     Console.ResetColor();
     return;
 }
 
 string jabberwockyInfo = File.ReadAllText(instructionsPath);
 string agentPrompt = File.ReadAllText(promptPath);
+
+// Debug output to verify files were loaded correctly
+Console.ForegroundColor = ConsoleColor.Cyan;
+Console.WriteLine($"Successfully loaded instructions ({jabberwockyInfo.Length} chars) and prompt ({agentPrompt.Length} chars) from knowledge folder");
+Console.ResetColor();
 
 // Combine the instructions and prompt
 string combinedInstructions = $"{agentPrompt}\n\n# Knowledge Base\n{jabberwockyInfo}";
@@ -42,28 +48,30 @@ Console.ForegroundColor = ConsoleColor.Cyan;
 Console.WriteLine("Creating agent...");
 Console.ResetColor();
 
-// Create the agent
-PersistentAgent agent = await agentClient.Administration.CreateAgentAsync(
-    model: apiDeploymentName,
-    name: "Jabberwocky Expert",
-    instructions: combinedInstructions,
-    temperature: 0.1f
-);
+try
+{
+    // Create the agent
+    PersistentAgent agent = await agentClient.Administration.CreateAgentAsync(
+        model: apiDeploymentName,
+        name: "Jabberwocky Expert",
+        instructions: combinedInstructions,
+        temperature: 0.1f
+    );
 
-Console.ForegroundColor = ConsoleColor.Green;
-Console.WriteLine($"Agent created with ID: {agent.Id}");
-Console.ResetColor();
+    Console.ForegroundColor = ConsoleColor.Green;
+    Console.WriteLine($"Agent created with ID: {agent.Id}");
+    Console.ResetColor();
 
-// Create a thread for the conversation
-Console.ForegroundColor = ConsoleColor.Cyan;
-Console.WriteLine("Creating conversation thread...");
-Console.ResetColor();
+    // Create a thread for the conversation
+    Console.ForegroundColor = ConsoleColor.Cyan;
+    Console.WriteLine("Creating conversation thread...");
+    Console.ResetColor();
 
-PersistentAgentThread thread = await agentClient.Threads.CreateThreadAsync();
+    PersistentAgentThread thread = await agentClient.Threads.CreateThreadAsync();
 
-Console.ForegroundColor = ConsoleColor.Green;
-Console.WriteLine($"Thread created with ID: {thread.Id}");
-Console.ResetColor();
+    Console.ForegroundColor = ConsoleColor.Green;
+    Console.WriteLine($"Thread created with ID: {thread.Id}");
+    Console.ResetColor();
 
 // Start conversation loop
 bool keepRunning = true;
@@ -123,6 +131,20 @@ if (keepRunning)
 {
     await agentClient.Threads.DeleteThreadAsync(thread.Id);
     await agentClient.Administration.DeleteAgentAsync(agent.Id);
+}
+}
+catch (Exception ex)
+{
+    Console.ForegroundColor = ConsoleColor.Red;
+    Console.WriteLine($"\nError: {ex.Message}");
+    Console.WriteLine("\nIt appears you haven't provisioned the required Azure resources yet.");
+    Console.WriteLine("To provision resources, run the following command:");
+    Console.ForegroundColor = ConsoleColor.Yellow;
+    Console.WriteLine("\n    .\\infra\\up.ps1\n");
+    Console.ForegroundColor = ConsoleColor.Red;
+    Console.WriteLine("Please ensure you have the necessary Azure permissions and credentials configured.");
+    Console.ResetColor();
+    return;
 }
 
 // Handler for streaming updates

@@ -2,7 +2,7 @@ targetScope = 'subscription'
 
 // Parameters
 @description('Prefix for the resource group and resources')
-param resourcePrefix string = 'agent-workshop'
+param resourcePrefix string = 'custom-agent'
 
 @description('Location of the resource group to create or use for the deployment')
 param location string = 'eastus'
@@ -39,7 +39,7 @@ param uniqueSuffix string = substring(uniqueString(subscription().id, resourcePr
 var resourceGroupName = toLower('rg-${resourcePrefix}-${uniqueSuffix}')
 
 var defaultTags = {
-  source: 'Azure AI Foundry Agents Service lab'
+  source: 'Custom Agent Sample'
 }
 
 var rootTags = union(defaultTags, tags)

@@ -13,13 +13,11 @@
     <PackageReference Include="Azure.Identity" Version="1.13.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.2" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="instructions.md">
+  </ItemGroup>  <ItemGroup>
+    <None Update="knowledge\**\*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="prompt.md">
+    <None Update="README.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

@@ -1,5 +1,3 @@
-// ai-services.bicep
-// This file contains the AI services resources for the agent workshop
 
 // Parameters
 @description('Name for the project')
