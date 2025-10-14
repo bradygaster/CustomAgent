@@ -13,7 +13,7 @@ var settings = new
     Agent = new
     {
         Name = configuration["Agent:Name"] ?? "Custom AI Agent",
-        Domain = configuration["Agent:Domain"] ?? "the specified domain", 
+        Domain = configuration["Agent:Domain"] ?? "the specified domain",
         ToneStyle = configuration["Agent:ToneStyle"] ?? "scholarly but approachable"
     },
     UI = new
@@ -33,10 +33,15 @@ Console.WriteLine(new string('-', settings.UI.WelcomeMessage.Length));
 
 try
 {
+    // ====================================
     // Create Azure OpenAI client and agent
+    // ====================================
     var agent = new AzureOpenAIClient(new Uri(settings.Azure.Endpoint), new DefaultAzureCredential())
         .GetChatClient(settings.Azure.ModelName)
-        .CreateAIAgent(name: settings.Agent.Name, instructions: LoadInstructions(settings.Agent.Domain, settings.Agent.ToneStyle));
+        .CreateAIAgent(
+            name: settings.Agent.Name,
+            instructions: LoadInstructions(settings.Agent.Domain, settings.Agent.ToneStyle)
+        );
 
     WriteStyledLine($"Agent created successfully: {settings.Agent.Name}", ConsoleColor.Green);
 
@@ -82,8 +87,8 @@ static string LoadInstructions(string domainName, string toneStyle)
         .Replace("{{DOMAIN_NAME}}", domainName)
         .Replace("{{TONE_STYLE}}", toneStyle);
 
-    var instructionsContent = string.Join("\n\n", 
-        instructionFiles.Select(file => 
+    var instructionsContent = string.Join("\n\n",
+        instructionFiles.Select(file =>
         {
             var content = File.ReadAllText(file);
             var fileName = Path.GetFileNameWithoutExtension(file);
@@ -95,6 +100,9 @@ static string LoadInstructions(string domainName, string toneStyle)
     return $"{promptTemplate}\n\n# Knowledge Base\n{instructionsContent}";
 }
 
+// ====================================
+// The ongoing conversation loop
+// ====================================
 static async Task RunConversationLoop(AIAgent agent, AgentThread thread, string promptMessage)
 {
     while (true)
@@ -118,6 +126,9 @@ static async Task RunConversationLoop(AIAgent agent, AgentThread thread, string 
     }
 }
 
+// ====================================
+// The ongoing conversation loop
+// ====================================
 static async Task ProcessAgentResponse(AIAgent agent, AgentThread thread, string input)
 {
     try
