@@ -1,7 +1,8 @@
-﻿using Azure.AI.Agents.Persistent;
+﻿using Azure.AI.OpenAI;
 using Azure.Identity;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.Configuration;
-using System.ClientModel;
+using OpenAI;
 using System.Text.Json;
 
 // Load configuration
@@ -26,8 +27,11 @@ string endpoint = configuration["Azure:Endpoint"] ?? throw new InvalidOperationE
 Console.WriteLine(WelcomeMessage);
 Console.WriteLine(new string('-', WelcomeMessage.Length));
 
-// Create the agent client
-PersistentAgentsClient agentClient = new(endpoint, new DefaultAzureCredential());
+// Create the Azure OpenAI client with managed identity authentication
+var azureOpenAIClient = new AzureOpenAIClient(new Uri(endpoint), new DefaultAzureCredential());
+
+// Get the chat client for the specified model
+var chatClient = azureOpenAIClient.GetChatClient(apiDeploymentName);
 
 // Define file paths
 string promptsFolderPath = Path.Combine(AppContext.BaseDirectory, "prompts");
@@ -85,86 +89,71 @@ Console.ResetColor();
 
 try
 {
-    // Create the agent
-    PersistentAgent agent = await agentClient.Administration.CreateAgentAsync(
-        model: apiDeploymentName,
+    // Create the agent using Microsoft Agent Framework
+    AIAgent agent = chatClient.CreateAIAgent(
         name: AgentName,
-        instructions: combinedInstructions,
-        temperature: Temperature
+        instructions: combinedInstructions
     );
 
     Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"Agent created with ID: {agent.Id}");
+    Console.WriteLine($"Agent created successfully: {AgentName}");
     Console.ResetColor();
 
-    // Create a thread for the conversation
-    Console.ForegroundColor = ConsoleColor.Cyan;
-    Console.WriteLine("Creating conversation thread...");
-    Console.ResetColor();
-
-    PersistentAgentThread thread = await agentClient.Threads.CreateThreadAsync();
+    // Get a new thread for conversation management
+    AgentThread thread = agent.GetNewThread();
 
     Console.ForegroundColor = ConsoleColor.Green;
-    Console.WriteLine($"Thread created with ID: {thread.Id}");
+    Console.WriteLine($"Thread created for conversation");
     Console.ResetColor();
 
-// Start conversation loop
-bool keepRunning = true;
-while (keepRunning)
-{
-    Console.ForegroundColor = ConsoleColor.Yellow;
-    Console.WriteLine($"\n{PromptMessage}");
-    Console.ResetColor();
-    
-    string? prompt = Console.ReadLine();
-
-    if (string.IsNullOrWhiteSpace(prompt))
+    // Start conversation loop
+    bool keepRunning = true;
+    while (keepRunning)
     {
-        continue;
-    }
-
-    if (prompt.Equals("exit", StringComparison.OrdinalIgnoreCase))
-    {
-        break;
-    }
-
-    if (prompt.Equals("save", StringComparison.OrdinalIgnoreCase))
-    {
-        Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine($"Saving thread with ID: {thread.Id} for agent ID: {agent.Id}. You can view this in AI Foundry at https://ai.azure.com");
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine($"\n{PromptMessage}");
         Console.ResetColor();
-        keepRunning = false;
-        continue;
+        
+        string? prompt = Console.ReadLine();
+
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            continue;
+        }
+
+        if (prompt.Equals("exit", StringComparison.OrdinalIgnoreCase))
+        {
+            break;
+        }
+
+        if (prompt.Equals("save", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"Conversation saved in thread. You can continue the conversation later.");
+            Console.ResetColor();
+            keepRunning = false;
+            continue;
+        }
+
+        try
+        {
+            // Use streaming response from the agent
+            await foreach (var update in agent.RunStreamingAsync(prompt, thread))
+            {
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write(update.Text);
+                Console.ResetColor();
+            }
+            Console.WriteLine(); // Add a newline after the response
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"\nError during agent run: {ex.Message}");
+            Console.ResetColor();
+        }
     }
 
-    // Send the user message to the thread
-    await agentClient.Messages.CreateMessageAsync(
-        threadId: thread.Id,
-        role: MessageRole.User,
-        content: prompt
-    );    // Start the agent's run on the thread
-    AsyncCollectionResult<StreamingUpdate> streamingUpdate = agentClient.Runs.CreateRunStreamingAsync(
-        threadId: thread.Id,
-        agentId: agent.Id,
-        maxCompletionTokens: MaxCompletionTokens,
-        maxPromptTokens: MaxPromptTokens,
-        temperature: Temperature,
-        topP: TopP
-    );
-
-    // Handle the streaming response
-    await foreach (StreamingUpdate update in streamingUpdate)
-    {
-        await HandleStreamingUpdateAsync(update);
-    }
-}
-
-// Clean up resources if not saving
-if (keepRunning)
-{
-    await agentClient.Threads.DeleteThreadAsync(thread.Id);
-    await agentClient.Administration.DeleteAgentAsync(agent.Id);
-}
 }
 catch (Exception ex)
 {
@@ -197,32 +186,4 @@ static int ParseInt(string? value, int defaultValue)
         return defaultValue;
     }
     return result;
-}
-
-// Handler for streaming updates
-async Task HandleStreamingUpdateAsync(StreamingUpdate update)
-{
-    switch (update.UpdateKind)
-    {
-        case StreamingUpdateReason.MessageUpdated:
-            // The agent has a response to the user
-            MessageContentUpdate messageContentUpdate = (MessageContentUpdate)update;
-            Console.ForegroundColor = ConsoleColor.White;
-            await Console.Out.WriteAsync(messageContentUpdate.Text);
-            Console.ResetColor();
-            break;
-
-        case StreamingUpdateReason.RunCompleted:
-            // The run is complete, so we can print a new line
-            await Console.Out.WriteLineAsync();
-            break;
-
-        case StreamingUpdateReason.RunFailed:
-            // The run failed, so we can print the error message
-            RunUpdate runFailedUpdate = (RunUpdate)update;
-            Console.ForegroundColor = ConsoleColor.Red;
-            await Console.Out.WriteLineAsync($"Error: {runFailedUpdate.Value.LastError.Message} (code: {runFailedUpdate.Value.LastError.Code})");
-            Console.ResetColor();
-            break;
-    }
 }
