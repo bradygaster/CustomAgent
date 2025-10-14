@@ -33,17 +33,17 @@ Console.WriteLine(new string('-', settings.UI.WelcomeMessage.Length));
 
 try
 {
-    // ====================================
-    // Create Azure OpenAI client and agent
-    // ====================================
+    var combinedInstructions = LoadInstructions(settings.Agent.Domain, settings.Agent.ToneStyle);
+
+    // ==========================================================
+    // Create Azure OpenAI client and an AI Agent to use it
+    // ==========================================================
     var agent = new AzureOpenAIClient(new Uri(settings.Azure.Endpoint), new DefaultAzureCredential())
         .GetChatClient(settings.Azure.ModelName)
         .CreateAIAgent(
             name: settings.Agent.Name,
-            instructions: LoadInstructions(settings.Agent.Domain, settings.Agent.ToneStyle)
+            instructions: combinedInstructions
         );
-
-    WriteStyledLine($"Agent created successfully: {settings.Agent.Name}", ConsoleColor.Green);
 
     // Start conversation
     var thread = agent.GetNewThread();
@@ -125,9 +125,9 @@ static async Task RunConversationLoop(AIAgent agent, AgentThread thread, string 
     }
 }
 
-// ====================================
-// The ongoing conversation loop
-// ====================================
+// =======================================
+// Process a chat response from the agent
+// =======================================
 static async Task ProcessAgentResponse(AIAgent agent, AgentThread thread, string input)
 {
     try
