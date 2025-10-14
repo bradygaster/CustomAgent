@@ -47,7 +47,6 @@ try
 
     // Start conversation
     var thread = agent.GetNewThread();
-    WriteStyledLine("Thread created for conversation", ConsoleColor.Green);
 
     await RunConversationLoop(agent, thread, settings.UI.PromptMessage);
 }
