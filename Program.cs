@@ -4,37 +4,24 @@ using Microsoft.Extensions.Configuration;
 using System.ClientModel;
 using System.Text.Json;
 
-// Configuration properties
-string AgentName = "Custom AI Agent";
-string DomainName = "the specified domain";
-string ToneStyle = "scholarly but approachable";
-float Temperature = 0.1f;
-float TopP = 0.1f;
-int MaxCompletionTokens = 4096;
-int MaxPromptTokens = 8192;
-string WelcomeMessage = "AI Agent Console";
-string PromptMessage = "Ask a question about the subject (type 'exit' to quit, 'save' to save the conversation):";
-
 // Load configuration
-var builder = new ConfigurationBuilder()
-    .AddUserSecrets<Program>();
-
+var builder = new ConfigurationBuilder().AddUserSecrets<Program>();
 var configuration = builder.Build();
+
+// Load configuration with defaults
+string AgentName = configuration["Agent:Name"] ?? "Custom AI Agent";
+string DomainName = configuration["Agent:Domain"] ?? "the specified domain";
+string ToneStyle = configuration["Agent:ToneStyle"] ?? "scholarly but approachable";
+float Temperature = ParseFloat(configuration["Agent:Temperature"], 0.1f);
+float TopP = ParseFloat(configuration["Agent:TopP"], 0.1f);
+int MaxCompletionTokens = ParseInt(configuration["Agent:MaxCompletionTokens"], 4096);
+int MaxPromptTokens = ParseInt(configuration["Agent:MaxPromptTokens"], 8192);
+string WelcomeMessage = configuration["UI:WelcomeMessage"] ?? "AI Agent Console";
+string PromptMessage = configuration["UI:PromptMessage"] ?? "Ask a question about the subject (type 'exit' to quit, 'save' to save the conversation):";
 
 // Get connection details from configuration
 string apiDeploymentName = configuration["Azure:ModelName"] ?? throw new InvalidOperationException("Azure:ModelName is not set in the configuration. Use 'dotnet user-secrets set \"Azure:ModelName\" \"your-model-name\"'");
 string endpoint = configuration["Azure:Endpoint"] ?? throw new InvalidOperationException("Azure:Endpoint is not set in the configuration. Use 'dotnet user-secrets set \"Azure:Endpoint\" \"your-endpoint\"'");
-
-// Load optional configuration with defaults
-AgentName = configuration["Agent:Name"] ?? AgentName;
-DomainName = configuration["Agent:Domain"] ?? DomainName;
-ToneStyle = configuration["Agent:ToneStyle"] ?? ToneStyle;
-Temperature = ParseFloat(configuration["Agent:Temperature"], Temperature);
-TopP = ParseFloat(configuration["Agent:TopP"], TopP);
-MaxCompletionTokens = ParseInt(configuration["Agent:MaxCompletionTokens"], MaxCompletionTokens);
-MaxPromptTokens = ParseInt(configuration["Agent:MaxPromptTokens"], MaxPromptTokens);
-WelcomeMessage = configuration["UI:WelcomeMessage"] ?? WelcomeMessage;
-PromptMessage = configuration["UI:PromptMessage"] ?? PromptMessage;
 
 Console.WriteLine(WelcomeMessage);
 Console.WriteLine(new string('-', WelcomeMessage.Length));
