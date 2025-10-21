@@ -1,14 +1,21 @@
-public class AgentSettings
+public class InstructionMetadata
 {
     public string Name { get; set; } = "Custom AI Agent";
     public string Domain { get; set; } = "the specified domain";
-    public string ToneStyle { get; set; } = "scholarly but approachable";
+    public string Tone { get; set; } = "scholarly but approachable";
+    public string Welcome { get; set; } = "AI Agent Console";
+    public string Prompt { get; set; } = "Ask a question (type 'exit' to quit):";
 }
 
-public class UISettings
+public class InstructionData
 {
-    public string WelcomeMessage { get; set; } = "AI Agent Console";
-    public string PromptMessage { get; set; } = "Ask a question about the subject (type 'exit' to quit):";
+    public InstructionMetadata Metadata { get; set; } = new();
+    public string Content { get; set; } = string.Empty;
+}
+
+public class AppSettings
+{
+    public string InstructionFile { get; set; } = "quantum.md";
 }
 
 public class AzureSettings

@@ -11,9 +11,9 @@ internal static class Extensions
 {
     public static IHostApplicationBuilder AddSettings(this IHostApplicationBuilder builder)
     {
+        builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
         builder.Configuration.AddUserSecrets<Program>();
-        builder.Services.Configure<AgentSettings>(builder.Configuration.GetSection("Agent"));
-        builder.Services.Configure<UISettings>(builder.Configuration.GetSection("UI"));
+        builder.Services.Configure<AppSettings>(builder.Configuration);
         builder.Services.Configure<AzureSettings>(builder.Configuration.GetSection("Azure"));
         return builder;
     }
@@ -24,9 +24,8 @@ internal static class Extensions
         builder.Services.AddSingleton<InstructionLoader>();
         builder.Services.AddSingleton<ConversationLoop>(services =>
         {
-            var agentOptions = services.GetRequiredService<IOptions<AgentSettings>>().Value;
+            var appOptions = services.GetRequiredService<IOptions<AppSettings>>().Value;
             var azureOptions = services.GetRequiredService<IOptions<AzureSettings>>().Value;
-            var uiOptions = services.GetRequiredService<IOptions<UISettings>>().Value;
             var instructionLoader = services.GetRequiredService<InstructionLoader>();
             var consoleClient = services.GetRequiredService<ConsoleClient>();
 
@@ -36,22 +35,22 @@ internal static class Extensions
             if (string.IsNullOrWhiteSpace(azureOptions.Endpoint))
                 throw new InvalidOperationException("Azure:Endpoint not configured.");
 
-            // Get the prompt and instructions
-            var combinedInstructions = instructionLoader.Load(agentOptions.Domain, agentOptions.ToneStyle);
+            // Load instruction data with metadata
+            var instructionData = instructionLoader.LoadInstruction(appOptions.InstructionFile);
 
             // Create a new AI Agent from an Azure Open AI Client
             var agent = new AzureOpenAIClient(new Uri(azureOptions.Endpoint), new DefaultAzureCredential())
                 .GetChatClient(azureOptions.ModelName)
                 .CreateAIAgent(
-                    name: agentOptions.Name,
-                    instructions: combinedInstructions
+                    name: instructionData.Metadata.Name,
+                    instructions: instructionData.Content
                 );
 
             // Start conversation
             var thread = agent.GetNewThread();
 
             // Create a conversation loop, 1 per app run
-            return new ConversationLoop(agent, thread, consoleClient, uiOptions);
+            return new ConversationLoop(agent, thread, consoleClient, instructionData.Metadata);
         });
 
         return builder;

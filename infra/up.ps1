@@ -100,11 +100,4 @@ if (-not (Test-Path -Path $promptTemplatePath)) {
     Write-Host "Please ensure the prompt template file exists."
 }
 
-# Set default agent configuration
-dotnet user-secrets set "Agent:Name" "Jabberwocky Expert" --project "$CSHARP_PROJECT_PATH"
-dotnet user-secrets set "Agent:Domain" "the Jabberwocky" --project "$CSHARP_PROJECT_PATH"
-dotnet user-secrets set "Agent:ToneStyle" "scholarly but approachable" --project "$CSHARP_PROJECT_PATH"
-dotnet user-secrets set "UI:WelcomeMessage" "Jabberwocky AI Agent" --project "$CSHARP_PROJECT_PATH"
-dotnet user-secrets set "UI:PromptMessage" "Ask a question about the Jabberwocky (type 'exit' to quit, 'save' to save the conversation):" --project "$CSHARP_PROJECT_PATH"
-
 Write-Host "Agent configuration completed successfully."

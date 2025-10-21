@@ -1,3 +1,11 @@
+---
+name: "Quantum Computing Expert"
+domain: "Quantum Computing"
+tone: "scholarly but approachable"
+welcome: "Quantum Computing Agent"
+prompt: "Ask a question about Quantum Computing (type 'exit' to quit, 'save' to save the conversation):"
+---
+
 # Quantum Computing: An Introduction to the Fundamentals
 
 ## What is Quantum Computing?

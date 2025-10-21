@@ -1,17 +1,17 @@
 ﻿using Microsoft.Agents.AI;
 
-public class ConversationLoop(AIAgent agent, AgentThread thread, ConsoleClient consoleClient, UISettings uiSettings)
+public class ConversationLoop(AIAgent agent, AgentThread thread, ConsoleClient consoleClient, InstructionMetadata metadata)
 {
     public async Task Chat()
     {
-        consoleClient.Print(uiSettings.WelcomeMessage, ConsoleColor.Cyan);
+        consoleClient.Print(metadata.Welcome, ConsoleColor.Cyan);
 
         if (agent == null || thread == null)
             throw new InvalidOperationException("ConversationLoop not initialized with an agent and thread.");
 
         while (true)
         {
-            consoleClient.Print($"\n{uiSettings.PromptMessage}", ConsoleColor.Yellow);
+            consoleClient.Print($"\n{metadata.Prompt}", ConsoleColor.Yellow);
             var input = Console.ReadLine();
 
             switch (input?.Trim().ToLowerInvariant())
