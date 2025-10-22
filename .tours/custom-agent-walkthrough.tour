@@ -1,0 +1,139 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Custom Agent Framework Walkthrough",
+  "description": "A comprehensive tour through the Custom Agent application built with Microsoft's Agent Framework. Learn how to create specialized AI assistants using instruction files with YAML front matter.",
+  "steps": [
+    {
+      "file": "README.md",
+      "line": 1,
+      "title": "Welcome to Custom Agents with Microsoft Agent Framework",
+      "description": "## Project Overview\n\nWelcome to the Custom Agent repository! This project demonstrates how to build flexible AI agents using Microsoft's Agent Framework. The key innovation here is the ability to create specialized AI assistants by simply swapping instruction files.\n\n**What makes this special:**\n- 🤖 **Dynamic Agent Creation**: Agents are configured through instruction files with YAML front matter\n- 🎯 **Domain Specialization**: Create experts in any field by changing the knowledge base\n- ⚙️ **Template System**: Reusable prompt templates with placeholder replacement\n- 🔧 **Modern .NET Architecture**: Uses Host Builder pattern and dependency injection\n- ☁️ **Azure Integration**: Full Infrastructure as Code with automated deployment\n\nLet's explore how this all works together!"
+    },
+    {
+      "file": "Program.cs",
+      "line": 5,
+      "title": "Application Entry Point - Host Builder Pattern",
+      "description": "## Modern .NET Bootstrap\n\nThe application uses .NET's **Host Builder pattern** for clean architecture:\n\n- `AddSettings()`: Configures application settings from multiple sources\n- `AddServices()`: Sets up dependency injection container\n- Clean separation of concerns through extension methods\n\n**Benefits:**\n- Testable and maintainable code structure\n- Built-in configuration management\n- Dependency injection out of the box\n- Easy to extend with new services\n\nThe try/catch block ensures graceful error handling with colored console output."
+    },
+    {
+      "file": "Extensions.cs",
+      "line": 14,
+      "title": "Configuration Management - Settings & Secrets",
+      "description": "## Multi-Source Configuration\n\nThe app loads configuration from multiple sources in priority order:\n\n1. **appsettings.json**: Base configuration and instruction file selection\n2. **User Secrets**: Sensitive Azure credentials (higher priority)\n\n**Key Features:**\n- `reloadOnChange: true`: Hot-reload configuration changes\n- Strongly-typed configuration classes (`AppSettings`, `AzureSettings`)\n- Secure handling of sensitive data through user secrets\n\n**Security Note:** Azure credentials are never stored in source control - they're managed through the user secrets system."
+    },
+    {
+      "file": "Extensions.cs",
+      "line": 30,
+      "title": "Service Registration & Azure Configuration",
+      "description": "## Dependency Injection Setup\n\nServices are registered in the DI container:\n\n- `ConsoleClient`: Colored console output\n- `InstructionLoader`: Processes instruction files\n- `ConversationLoop`: Main chat interface (singleton with complex setup)\n\n**Critical Validation:**\nThe app validates Azure configuration at startup:\n- Throws clear exceptions if `ModelName` or `Endpoint` are missing\n- Fails fast with helpful error messages\n- Prevents runtime surprises\n\n**Why Singleton?** The ConversationLoop maintains state (agent + thread) throughout the app's lifetime."
+    },
+    {
+      "file": "Extensions.cs",
+      "line": 45,
+      "title": "Dynamic AI Agent Creation",
+      "description": "## Microsoft Agent Framework Integration\n\nThis is where the magic happens! The app:\n\n1. **Loads Instruction Data**: Gets agent configuration and knowledge base\n2. **Creates Azure Client**: Uses `DefaultAzureCredential` for seamless auth\n3. **Builds AI Agent**: Dynamically configured with name and instructions\n4. **Starts Thread**: Each conversation gets its own thread\n\n**Dynamic Configuration:**\n- Agent name comes from instruction file metadata\n- Instructions combine prompt template + knowledge base\n- Everything is configurable without code changes\n\n**Azure Authentication:** `DefaultAzureCredential` automatically handles various auth methods (user login, managed identity, etc.)"
+    },
+    {
+      "file": "Settings.cs",
+      "line": 1,
+      "title": "Strongly-Typed Configuration",
+      "description": "## Configuration Model\n\n**InstructionMetadata**: Controls agent behavior and UI\n- `Name`: Agent's display name\n- `Domain`: Subject matter area (used in prompts)\n- `Tone`: Communication style\n- `Welcome`: Startup message\n- `Prompt`: User input prompt\n\n**InstructionData**: Combines metadata with content\n- Links configuration with knowledge base\n\n**Settings Classes**: Type-safe configuration\n- `AppSettings`: Which instruction file to load\n- `AzureSettings`: Azure AI connection details\n\n**Benefits:** IntelliSense, compile-time checking, clear documentation of configuration options."
+    },
+    {
+      "file": "InstructionLoader.cs",
+      "line": 8,
+      "title": "Instruction Loading & File Validation",
+      "description": "## Robust File Loading\n\nThe instruction loader:\n\n1. **Resolves Paths**: Uses `AppContext.BaseDirectory` for reliable path resolution\n2. **Validates Files**: Checks both prompt template and instruction file existence\n3. **Clear Error Messages**: Helpful exceptions when files are missing\n\n**File Structure:**\n- `prompts/prompt_template.md`: Defines agent behavior\n- `instructions/{filename}`: Agent-specific knowledge base\n\n**Error Handling:**\n- `FileNotFoundException` with specific file paths\n- Guidance on where files should be located\n- Fails fast to prevent confusing runtime errors"
+    },
+    {
+      "file": "InstructionLoader.cs",
+      "line": 37,
+      "title": "YAML Front Matter Processing",
+      "description": "## Advanced Content Parsing\n\nThe app uses **Jekyll-style front matter** processing:\n\n1. **Detects YAML Block**: Looks for `---` delimiters\n2. **Parses Metadata**: Uses YamlDotNet with camelCase naming\n3. **Separates Content**: Splits metadata from knowledge base\n4. **Error Handling**: Clear messages for invalid YAML\n\n**YAML Processing:**\n- Automatic property mapping to `InstructionMetadata`\n- Graceful fallback to defaults if parsing fails\n- Detailed error context for debugging\n\n**Why YAML?** Human-readable, widely supported, perfect for configuration metadata."
+    },
+    {
+      "file": "InstructionLoader.cs",
+      "line": 26,
+      "title": "Dynamic Prompt Template System",
+      "description": "## Template Engine\n\nThe app implements a simple but powerful template system:\n\n**Placeholder Replacement:**\n- `{{DOMAIN_NAME}}` → Agent's domain expertise\n- `{{TONE_STYLE}}` → Communication style\n\n**Content Combination:**\n1. Load prompt template\n2. Replace placeholders with metadata values\n3. Append knowledge base content\n4. Result: Complete agent instructions\n\n**Benefits:**\n- Reusable prompt templates\n- Consistent agent behavior\n- Easy customization per domain\n- No code changes needed for new agents"
+    },
+    {
+      "file": "prompts/prompt_template.md",
+      "line": 5,
+      "title": "Agent Behavior Template",
+      "description": "## Prompt Engineering Template\n\nThis template defines core agent behavior:\n\n**Specialization Focus:**\n- Agent only responds to questions in its domain\n- Politely redirects off-topic questions\n- Uses provided knowledge base exclusively\n\n**Behavioral Guidelines:**\n- Conversational but informative\n- Enthusiastic about the domain\n- Configurable tone through `{{TONE_STYLE}}`\n\n**Template Placeholders:**\n- `{{DOMAIN_NAME}}`: Replaced with agent's area of expertise\n- `{{TONE_STYLE}}`: Sets communication style\n\n**Result:** Consistent, specialized agents that stay in their lane while being helpful and engaging."
+    },
+    {
+      "file": "instructions/quantum.md",
+      "line": 1,
+      "title": "Instruction File Format - YAML Front Matter",
+      "description": "## Agent Configuration Through Metadata\n\nThe YAML front matter configures the entire agent experience:\n\n```yaml\nname: \"Quantum Computing Expert\"     # Agent display name\ndomain: \"Quantum Computing\"          # Expertise area\ntone: \"scholarly but approachable\"   # Communication style\nwelcome: \"Quantum Computing Agent\"   # Startup message\nprompt: \"Ask a question...\"          # User input prompt\n```\n\n**Dynamic Configuration:**\n- Changes here instantly create a new agent personality\n- No code modifications required\n- Template system uses these values automatically\n\n**Extensibility:** Add new metadata fields by updating the `InstructionMetadata` class."
+    },
+    {
+      "file": "instructions/quantum.md",
+      "line": 11,
+      "title": "Knowledge Base Content",
+      "description": "## Domain-Specific Knowledge Base\n\nEverything after the front matter becomes the agent's knowledge base:\n\n**Content Structure:**\n- Comprehensive domain information\n- Well-organized sections\n- Examples and practical guidance\n- Further reading suggestions\n\n**Agent Behavior:**\n- Responds based solely on this content\n- Stays within domain boundaries\n- Provides accurate, sourced information\n\n**Creating New Agents:**\n1. Copy this file\n2. Update the YAML front matter\n3. Replace content with your domain expertise\n4. Update `appsettings.json` to point to new file\n\n**Result:** Instant domain expert!"
+    },
+    {
+      "file": "ConversationLoop.cs",
+      "line": 10,
+      "title": "Interactive Chat Interface",
+      "description": "## Metadata-Driven User Experience\n\nThe conversation loop uses instruction metadata to customize the interface:\n\n**Dynamic UI Elements:**\n- Welcome message from `metadata.Welcome`\n- Input prompt from `metadata.Prompt`\n- Colors enhance user experience\n\n**Chat Flow:**\n1. Display personalized welcome\n2. Show custom prompt\n3. Process user input\n4. Handle special commands (`exit`)\n5. Stream AI responses\n\n**User Experience:** Each agent feels unique thanks to customized messaging, even though the code is identical."
+    },
+    {
+      "file": "ConversationLoop.cs",
+      "line": 34,
+      "title": "Real-time Streaming Responses",
+      "description": "## Streaming AI Responses\n\nThe app provides real-time response streaming:\n\n**Streaming Benefits:**\n- Immediate feedback to users\n- Better perceived performance\n- Handles long responses gracefully\n\n**Implementation:**\n- `RunStreamingAsync()`: Microsoft Agent Framework method\n- `await foreach`: Async enumerable pattern\n- `Fragment()`: Writes text without newlines\n\n**Error Handling:**\n- Graceful degradation on communication errors\n- Clear error messages with colored output\n- App continues running after errors\n\n**User Experience:** Feels like chatting with a real person as text appears in real-time."
+    },
+    {
+      "file": "ConsoleClient.cs",
+      "line": 3,
+      "title": "Colored Console Output",
+      "description": "## Enhanced Console Experience\n\nSimple but effective console utilities:\n\n**Print Method:**\n- Sets color, writes line, resets color\n- Used for complete messages\n\n**Fragment Method:**\n- Sets color, writes text (no newline)\n- Perfect for streaming responses\n- Builds up responses character by character\n\n**Color Coding:**\n- Cyan: Welcome messages\n- Yellow: User prompts\n- White: AI responses\n- Red: Error messages\n\n**Benefits:** Visual hierarchy makes conversations easier to follow and errors immediately obvious."
+    },
+    {
+      "file": "appsettings.json",
+      "line": 2,
+      "title": "Runtime Configuration",
+      "description": "## Agent Selection Configuration\n\n**InstructionFile Setting:**\nCurrently set to `\"jabberwocky.md\"` - this determines which agent runs!\n\n**Easy Agent Switching:**\n- Change to `\"quantum.md\"` for quantum computing expert\n- Create new instruction files for other domains\n- No code changes required\n\n**Configuration Hierarchy:**\n1. User secrets (for Azure settings)\n2. appsettings.json (for file selection)\n3. Default values in Settings classes\n\n**Development Tip:** Keep different instruction files for different use cases and switch between them via configuration."
+    },
+    {
+      "file": "instructions/jabberwocky.md",
+      "line": 1,
+      "title": "Alternative Agent Configuration",
+      "description": "## Different Agent, Same Architecture\n\nCompare this YAML front matter with quantum.md:\n\n```yaml\nname: \"Jabberwocky Expert\"          # Different expertise\ndomain: \"the Jabberwocky\"           # Different domain\ntone: \"scholarly but approachable\"  # Same tone\nwelcome: \"Jabberwocky AI Agent\"     # Different welcome\n```\n\n**Demonstrates Flexibility:**\n- Same code handles completely different domains\n- Easy to create specialized agents\n- Consistent user experience across agents\n\n**Literary Focus:** This agent knows all about Lewis Carroll's Jabberwocky creature and poem, showing how the system works for any knowledge domain."
+    },
+    {
+      "file": "CustomAgent.csproj",
+      "line": 10,
+      "title": "Key Dependencies & Framework Integration",
+      "description": "## Essential NuGet Packages\n\n**Microsoft Agent Framework:**\n- `Microsoft.Agents.AI.OpenAI`: Core agent functionality\n- Preview version shows cutting-edge features\n\n**Azure Integration:**\n- `Azure.AI.OpenAI`: Azure AI services client\n- `Azure.Identity`: Seamless authentication\n\n**Modern .NET:**\n- `Microsoft.Extensions.Hosting`: Host builder pattern\n- `Microsoft.Extensions.Configuration.UserSecrets`: Secure config\n\n**YAML Processing:**\n- `YamlDotNet`: Front matter parsing\n\n**Architecture:** These dependencies enable the modern, cloud-native, AI-powered architecture."
+    },
+    {
+      "file": "CustomAgent.csproj",
+      "line": 20,
+      "title": "Content File Management",
+      "description": "## Runtime Content Deployment\n\n**Content Files Copied to Output:**\n- `instructions/**/*`: All instruction files\n- `prompts/**/*`: Prompt templates\n- `appsettings.json`: Configuration\n- `README.md`: Documentation\n\n**Copy Strategies:**\n- `PreserveNewest`: Only copy if newer\n- `Always`: Copy every build (for config)\n\n**Why This Matters:**\n- Instruction files available at runtime\n- Easy to modify without rebuilding\n- Self-contained deployment\n\n**Development Workflow:** Edit instruction files, run app - changes are immediately available."
+    },
+    {
+      "file": "infra/main.bicep",
+      "line": 1,
+      "title": "Azure Infrastructure as Code",
+      "description": "## Bicep Infrastructure Definition\n\n**Subscription-Level Deployment:**\n- Creates resource group\n- Deploys AI Foundry resources\n- Sets up GPT-4o model deployment\n\n**Key Parameters:**\n- `resourcePrefix`: Naming convention\n- `location`: Azure region\n- `modelName`: AI model to deploy\n- `modelCapacity`: Performance allocation\n\n**Modular Design:**\n- `foundry.bicep`: Core AI services\n- `foundry-project.bicep`: Project setup\n- `foundry-model-deployment.bicep`: Model configuration\n\n**Benefits:** Repeatable, version-controlled infrastructure that can be deployed to any Azure subscription."
+    },
+    {
+      "file": "infra/up.ps1",
+      "line": 15,
+      "title": "Automated Azure Deployment",
+      "description": "## One-Click Azure Setup\n\n**Deployment Process:**\n1. Uses Azure CLI to deploy Bicep templates\n2. Captures deployment outputs\n3. Configures application automatically\n4. Sets up user permissions\n\n**Configuration:**\n- `MODEL_NAME`: GPT-4o\n- `MODEL_CAPACITY`: 140 TPM\n- `RG_LOCATION`: East US\n\n**Automation Benefits:**\n- No manual Azure portal clicks\n- Consistent deployments\n- Infrastructure as Code\n- Easy to replicate\n\n**Developer Experience:** Run one script, get a fully configured environment."
+    },
+    {
+      "file": "infra/up.ps1",
+      "line": 52,
+      "title": "Automated Secret Configuration",
+      "description": "## Seamless Application Configuration\n\n**Automatic Secret Management:**\n1. Extracts Azure endpoints from deployment\n2. Sets user secrets automatically\n3. No manual configuration required\n4. Assigns proper Azure permissions\n\n**User Secrets Set:**\n- `Azure:Endpoint`: Projects API endpoint\n- `Azure:ModelName`: Model deployment name\n\n**Security:**\n- Credentials never stored in source control\n- Uses .NET user secrets system\n- Azure RBAC with least privilege\n\n**Result:** After running this script, the application is ready to run with `dotnet run` - no additional setup needed!"
+    }
+  ]
+}
