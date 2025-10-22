@@ -1,6 +1,6 @@
 {
   "$schema": "https://aka.ms/codetour-schema",
-  "title": "Custom Agent Framework Walkthrough",
+  "title": "Custom Agents with Microsoft Agent Framework Walkthrough",
   "description": "A comprehensive tour through the Custom Agent application built with Microsoft's Agent Framework. Learn how to create specialized AI assistants using instruction files with YAML front matter.",
   "steps": [
     {
@@ -13,7 +13,7 @@
       "file": "Program.cs",
       "line": 5,
       "title": "Application Entry Point - Host Builder Pattern",
-      "description": "## Modern .NET Bootstrap\n\nThe application uses .NET's **Host Builder pattern** for clean architecture:\n\n- `AddSettings()`: Configures application settings from multiple sources\n- `AddServices()`: Sets up dependency injection container\n- Clean separation of concerns through extension methods\n\n**Benefits:**\n- Testable and maintainable code structure\n- Built-in configuration management\n- Dependency injection out of the box\n- Easy to extend with new services\n\nThe try/catch block ensures graceful error handling with colored console output."
+      "description": "## Modern .NET Bootstrap\n\nThe application uses .NET's **Host Builder pattern** for clean architecture:\n\n- `AddSettings()`: Configures application settings from multiple sources\n- `AddServices()`: Sets up dependency injection container\n- Clean separation of concerns through extension methods\n\n**Benefits:**\n- Testable and maintainable code structure\n- Built-in configuration management\n- Dependency injection out of the box\n- Easy to extend with new services\n\nThe try/catch block ensures graceful error handling with colorized console output."
     },
     {
       "file": "Extensions.cs",
@@ -25,7 +25,7 @@
       "file": "Extensions.cs",
       "line": 30,
       "title": "Service Registration & Azure Configuration",
-      "description": "## Dependency Injection Setup\n\nServices are registered in the DI container:\n\n- `ConsoleClient`: Colored console output\n- `InstructionLoader`: Processes instruction files\n- `ConversationLoop`: Main chat interface (singleton with complex setup)\n\n**Critical Validation:**\nThe app validates Azure configuration at startup:\n- Throws clear exceptions if `ModelName` or `Endpoint` are missing\n- Fails fast with helpful error messages\n- Prevents runtime surprises\n\n**Why Singleton?** The ConversationLoop maintains state (agent + thread) throughout the app's lifetime."
+      "description": "## Dependency Injection Setup\n\nServices are registered in the DI container:\n\n- `ConsoleClient`: Colorized console output\n- `InstructionLoader`: Processes instruction files\n- `ConversationLoop`: Main chat interface (singleton with complex setup)\n\n**Critical Validation:**\nThe app validates Azure configuration at startup:\n- Throws clear exceptions if `ModelName` or `Endpoint` are missing\n- Fails fast with helpful error messages\n- Prevents runtime surprises\n\n**Why Singleton?** The ConversationLoop maintains state (agent + thread) throughout the app's lifetime."
     },
     {
       "file": "Extensions.cs",
@@ -90,7 +90,7 @@
     {
       "file": "ConsoleClient.cs",
       "line": 3,
-      "title": "Colored Console Output",
+      "title": "Colorized Console Output",
       "description": "## Enhanced Console Experience\n\nSimple but effective console utilities:\n\n**Print Method:**\n- Sets color, writes line, resets color\n- Used for complete messages\n\n**Fragment Method:**\n- Sets color, writes text (no newline)\n- Perfect for streaming responses\n- Builds up responses character by character\n\n**Color Coding:**\n- Cyan: Welcome messages\n- Yellow: User prompts\n- White: AI responses\n- Red: Error messages\n\n**Benefits:** Visual hierarchy makes conversations easier to follow and errors immediately obvious."
     },
     {
