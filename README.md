@@ -8,7 +8,7 @@ This repository contains a flexible AI agent built using Microsoft's Agent Frame
 - `ConversationLoop.cs` - Handles the interactive chat loop with the AI agent
 - `Extensions.cs` - Dependency injection configuration and service registration
 - `Settings.cs` - Configuration classes for app and Azure settings
-- `ConsoleClient.cs` - Console output utilities for colored text display
+- `ConsoleClient.cs` - Console output utilities for colorized text display
 - `InstructionLoader.cs` - Loads and processes instruction files with YAML front matter
 - `appsettings.json` - Application configuration including instruction file selection
 - `instructions/` - Directory containing the agent's knowledge base
@@ -225,7 +225,7 @@ The main flow:
 2. `Extensions.cs` configures services and creates the AI agent
 3. `InstructionLoader.cs` loads the specified instruction file and parses YAML front matter
 4. `ConversationLoop.cs` handles the interactive chat experience using metadata from front matter
-5. `ConsoleClient.cs` provides colored console output
+5. `ConsoleClient.cs` provides colorized console output
 
 ## Error Handling
 
@@ -235,7 +235,7 @@ The application includes comprehensive error handling:
 - Checks for the existence of prompt and instruction files
 - Validates YAML front matter parsing
 - Gracefully handles agent communication errors
-- Provides clear error messages with colored console output
+- Provides clear error messages with colorized console output
 
 Common error scenarios:
 - Missing Azure configuration: "Azure:ModelName not configured"
