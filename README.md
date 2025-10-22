@@ -1,6 +1,6 @@
-# Custom AI Agent Framework
+# Custom Agents with Microsoft Agent Framework
 
-This repository contains a flexible AI agent framework built using Microsoft's Agents AI framework. The agent can be configured to specialize in any knowledge domain by loading instruction files with embedded metadata, allowing you to create custom AI assistants with specific expertise.
+This repository contains a flexible AI agent built using Microsoft's Agent Framework. The agent can be configured to specialize in any knowledge domain by loading instruction files with embedded metadata, allowing you to create custom AI assistants with specific expertise.
 
 ## Project Structure
 
@@ -31,7 +31,7 @@ This repository contains a flexible AI agent framework built using Microsoft's A
 ## Key Dependencies
 
 The application uses the following key NuGet packages:
-- `Microsoft.Agents.AI.OpenAI` (v1.0.0-preview.251009.1) - Microsoft's Agents AI framework
+- `Microsoft.Agents.AI.OpenAI` (v1.0.0-preview.251009.1) - Microsoft Agent Framework
 - `Azure.AI.OpenAI` (v2.1.0) - Azure OpenAI integration
 - `Azure.Identity` (v1.13.2) - Azure authentication
 - `Microsoft.Extensions.Hosting` (v9.0.10) - .NET Host builder pattern
