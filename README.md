@@ -1,18 +1,19 @@
 # Custom AI Agent Framework
 
-This repository contains a flexible AI agent framework built using Microsoft's Agents AI framework. The agent can be configured to specialize in any knowledge domain, allowing you to create custom AI assistants with specific expertise.
+This repository contains a flexible AI agent framework built using Microsoft's Agents AI framework. The agent can be configured to specialize in any knowledge domain by loading instruction files with embedded metadata, allowing you to create custom AI assistants with specific expertise.
 
 ## Project Structure
 
 - `Program.cs` - The main entry point using Host builder pattern
 - `ConversationLoop.cs` - Handles the interactive chat loop with the AI agent
 - `Extensions.cs` - Dependency injection configuration and service registration
-- `Settings.cs` - Configuration classes for agent, UI, and Azure settings
+- `Settings.cs` - Configuration classes for app and Azure settings
 - `ConsoleClient.cs` - Console output utilities for colored text display
-- `InstructionLoader.cs` - Loads and processes instruction files and prompt templates
+- `InstructionLoader.cs` - Loads and processes instruction files with YAML front matter
+- `appsettings.json` - Application configuration including instruction file selection
 - `instructions/` - Directory containing the agent's knowledge base
-  - `jabberwocky.md` - Sample knowledge about the Jabberwocky
-  - `quantum.txt` - Sample knowledge about quantum computing
+  - `jabberwocky.md` - Sample knowledge about the Jabberwocky with embedded metadata
+  - `quantum.md` - Sample knowledge about quantum computing with embedded metadata
 - `prompts/` - Directory containing prompt templates
   - `prompt_template.md` - Configurable template for defining agent behaviors
 - `infra/` - Infrastructure as Code for Azure deployment
@@ -34,6 +35,7 @@ The application uses the following key NuGet packages:
 - `Azure.AI.OpenAI` (v2.1.0) - Azure OpenAI integration
 - `Azure.Identity` (v1.13.2) - Azure authentication
 - `Microsoft.Extensions.Hosting` (v9.0.10) - .NET Host builder pattern
+- `YamlDotNet` (v16.3.0) - YAML parsing for front matter metadata
 
 ## Setup Instructions
 
@@ -56,12 +58,10 @@ This script will:
 - Create Azure AI Foundry resources including a GPT-4o model deployment
 - Set up required IAM permissions (Azure AI Developer role)
 - Configure the application's user secrets with proper Azure connection details
-- Set default agent configuration for the Jabberwocky domain
 
 The script automatically configures these user secrets:
 - `Azure:ModelName` - Set to "gpt-4o"
 - `Azure:Endpoint` - The Azure AI Projects endpoint URL
-- Default agent settings for the Jabberwocky domain
 
 ### 3. Build and Run the Application
 
@@ -72,25 +72,42 @@ dotnet run
 
 ## Sample Interaction
 
-Here's what a typical interaction with the agent looks like:
+Here's what a typical interaction with the quantum computing agent looks like:
 
 ```
-Jabberwocky AI Agent
+Quantum Computing Agent
 
-Ask a question about the Jabberwocky (type 'exit' to quit, 'save' to save the conversation):
-What can you tell me about the Jabberwocky?
+Ask a question about Quantum Computing (type 'exit' to quit, 'save' to save the conversation):
+What can you tell me about quantum computing?
 
-Based on my knowledge base, the Jabberwocky is a legendary creature that originated in Lewis Carroll's novel "Through the Looking-Glass, and What Alice Found There" (1871). The creature is the subject of the famous nonsensical poem "Jabberwocky," which is considered one of the greatest nonsense poems written in the English language...
+Quantum computing is a field of computer science focused on developing computers that leverage the principles of quantum mechanics. Unlike classical computers, which use bits as the smallest unit of data (0 or 1), quantum computers use quantum bits, or qubits, which can exist in multiple states simultaneously due to superposition...
 
-Ask a question about the Jabberwocky (type 'exit' to quit, 'save' to save the conversation):
+Ask a question about Quantum Computing (type 'exit' to quit, 'save' to save the conversation):
 exit
 ```
 
-The application provides streaming responses from the AI agent, displaying text as it's generated.
+The application provides streaming responses from the AI agent, displaying text as it's generated. The agent's name, welcome message, and prompt are all configured in the instruction file's front matter.
 
 ## Configuration
 
-The application uses .NET's configuration system with user secrets for sensitive data. Configuration is organized into three main sections:
+The application uses .NET's configuration system with user secrets for sensitive data and a simple JSON configuration file for instruction selection.
+
+### Application Settings
+
+Configure which instruction file to load in `appsettings.json`:
+
+```json
+{
+  "InstructionFile": "quantum.md",
+  "Azure": {
+    "ModelName": "",
+    "Endpoint": ""
+  }
+}
+```
+
+- `InstructionFile` - Specifies which markdown file from the `instructions/` directory to load
+- Azure settings can be configured here or via user secrets (user secrets take precedence)
 
 ### Azure Settings (Required)
 
@@ -101,58 +118,97 @@ dotnet user-secrets set "Azure:ModelName" "gpt-4o"
 dotnet user-secrets set "Azure:Endpoint" "your-azure-endpoint"
 ```
 
-### Agent Settings (Optional)
+### Agent Metadata (From Instruction Files)
 
-```powershell
-dotnet user-secrets set "Agent:Name" "Your Agent Name"
-dotnet user-secrets set "Agent:Domain" "your specialized domain name"
-dotnet user-secrets set "Agent:ToneStyle" "scholarly but approachable"
+All agent configuration is now read from the YAML front matter in instruction files. Each instruction file should start with:
+
+```yaml
+---
+name: "Agent Name"
+domain: "specialized domain"
+tone: "scholarly but approachable"
+welcome: "Welcome Message"
+prompt: "Ask a question (type 'exit' to quit):"
+---
 ```
 
-### UI Settings (Optional)
+## Instruction File Format
 
-```powershell
-dotnet user-secrets set "UI:WelcomeMessage" "Your Custom Welcome Message"
-dotnet user-secrets set "UI:PromptMessage" "Your custom prompt message"
+Instruction files combine YAML front matter with markdown content. The front matter contains all agent configuration, while the markdown content provides the knowledge base.
+
+### Example Structure
+
+```yaml
+---
+name: "Quantum Computing Expert"
+domain: "Quantum Computing"
+tone: "scholarly but approachable"
+welcome: "Quantum Computing Agent"
+prompt: "Ask a question about Quantum Computing (type 'exit' to quit):"
+---
+
+# Your Knowledge Base Content
+
+This is where you put all the information about your domain...
 ```
+
+### Front Matter Properties
+
+- `name` - The agent's display name
+- `domain` - The subject matter domain (used in prompt template)
+- `tone` - The agent's communication style (used in prompt template)
+- `welcome` - Welcome message displayed when the agent starts
+- `prompt` - The input prompt shown to users
 
 ## Files Structure
 
 ### Instructions Files
 
-The `instructions/` directory contains markdown and text files that form the agent's knowledge base. Each file will be loaded and combined into the agent's instructions. The repository includes two example instruction files:
+The `instructions/` directory contains markdown files with YAML front matter that provide both agent configuration and knowledge base content. The application loads a single instruction file specified in `appsettings.json`. The repository includes two example instruction files:
 
 - `instructions/jabberwocky.md` - Comprehensive information about the Jabberwocky creature and poem
-- `instructions/quantum.txt` - Basic introduction to quantum computing concepts
+- `instructions/quantum.md` - Introduction to quantum computing concepts
 
-All `.md` files in the instructions directory are automatically loaded by the `InstructionLoader` class.
+Each instruction file is self-contained with its own agent configuration in the front matter.
 
 ### Prompt Template
 
-The `prompts/prompt_template.md` file defines the agent's behavior and response guidelines. It uses placeholders that are replaced with configuration values:
+The `prompts/prompt_template.md` file defines the agent's behavior and response guidelines. It uses placeholders that are replaced with values from the instruction file's front matter:
 
-- `{{DOMAIN_NAME}}` - Replaced with the Agent:Domain setting
-- `{{TONE_STYLE}}` - Replaced with the Agent:ToneStyle setting
+- `{{DOMAIN_NAME}}` - Replaced with the `domain` property from front matter
+- `{{TONE_STYLE}}` - Replaced with the `tone` property from front matter
 
 This template system allows you to create specialized agents without modifying the code.
 
 ## Customizing Content
 
-The application comes with sample content about the Jabberwocky and quantum computing. To customize it for your own domain:
+To create your own specialized agent:
 
-1. **Replace instruction files**: Add your own `.md` or `.txt` files to the `instructions/` directory
-2. **Update the prompt template**: Modify `prompts/prompt_template.md` to define your agent's behavior
-3. **Configure the agent**: Update the default settings in `infra/up.ps1` or use user secrets:
+1. **Create a new instruction file**: Add a new `.md` file to the `instructions/` directory with proper front matter
+2. **Update configuration**: Change the `InstructionFile` setting in `appsettings.json` to point to your new file
+3. **Optionally modify the prompt template**: Update `prompts/prompt_template.md` to define specific behaviors
 
-```powershell
-dotnet user-secrets set "Agent:Name" "Your Expert Name"
-dotnet user-secrets set "Agent:Domain" "your specialized domain"
-dotnet user-secrets set "Agent:ToneStyle" "your preferred tone"
-dotnet user-secrets set "UI:WelcomeMessage" "Your Custom Welcome"
-dotnet user-secrets set "UI:PromptMessage" "Your custom prompt:"
+### Example Custom Instruction File
+
+```yaml
+---
+name: "Medical Assistant"
+domain: "Medical Information"
+tone: "professional and empathetic"
+welcome: "Medical Information Assistant"
+prompt: "How can I help you with medical information today? (type 'exit' to quit):"
+---
+
+# Medical Knowledge Base
+
+## Important Disclaimer
+This information is for educational purposes only and should not replace professional medical advice...
+
+## Common Conditions
+...your medical knowledge content here...
 ```
 
-The `InstructionLoader` class automatically processes all instruction files and combines them with the prompt template to create the agent's complete instructions.
+The `InstructionLoader` class automatically processes the selected instruction file and combines it with the prompt template to create the agent's complete instructions.
 
 ## Architecture
 
@@ -167,8 +223,8 @@ The application follows modern .NET patterns:
 The main flow:
 1. `Program.cs` sets up the host and starts the conversation
 2. `Extensions.cs` configures services and creates the AI agent
-3. `InstructionLoader.cs` processes knowledge base files
-4. `ConversationLoop.cs` handles the interactive chat experience
+3. `InstructionLoader.cs` loads the specified instruction file and parses YAML front matter
+4. `ConversationLoop.cs` handles the interactive chat experience using metadata from front matter
 5. `ConsoleClient.cs` provides colored console output
 
 ## Error Handling
@@ -177,12 +233,14 @@ The application includes comprehensive error handling:
 
 - Validates required Azure configuration at startup
 - Checks for the existence of prompt and instruction files
+- Validates YAML front matter parsing
 - Gracefully handles agent communication errors
 - Provides clear error messages with colored console output
 
 Common error scenarios:
 - Missing Azure configuration: "Azure:ModelName not configured"
-- Missing files: "Prompt template file not found"
+- Missing files: "Instruction file 'filename.md' not found"
+- Invalid front matter: "Failed to parse front matter: ..."
 - Agent communication issues: Displayed during chat interaction
 
 ## Cleanup
