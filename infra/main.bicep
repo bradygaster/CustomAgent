@@ -29,7 +29,7 @@ param modelVersion string = '2024-11-20'
 param modelSkuName string = 'GlobalStandard'
 
 @description('Model deployment capacity')
-param modelCapacity int = 140
+param modelCapacity int = 30
 
 @description('Unique suffix for the resources')
 @maxLength(8)
@@ -98,3 +98,4 @@ output resourceGroupName string = rg.name
 output aiAccountName string = foundry.outputs.accountName
 output aiProjectName string = foundryProject.outputs.aiProjectName
 output projectsEndpoint string = '${foundry.outputs.endpoint}api/projects/${foundryProject.outputs.aiProjectName}'
+output openAIEndpoint string = 'https://${foundry.outputs.accountName}.openai.azure.com/'

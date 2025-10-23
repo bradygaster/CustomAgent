@@ -13,18 +13,18 @@ $RG_LOCATION = "eastus"
 $MODEL_NAME = "gpt-4o"
 $MODEL_VERSION = "2024-11-20"
 $AI_PROJECT_FRIENDLY_NAME = "Custom Agent"
-$MODEL_CAPACITY = 140
+$MODEL_CAPACITY = 30
 
 # Deploy the Azure resources and save output to JSON
 az deployment sub create `
-  --name "custom-agent-deployment-$(Get-Date -Format 'yyyyMMdd')" `
-  --location "$RG_LOCATION" `  --template-file "$scriptDir\main.bicep" `
+  --name "custom-agent-deployment-$(Get-Date -Format 'yyyyMMddHHmmss')" `
+  --location "$RG_LOCATION" `  --template-file "$scriptDir/main.bicep" `
   --parameters `
       aiProjectFriendlyName="$AI_PROJECT_FRIENDLY_NAME" `
       modelName="$MODEL_NAME" `
       modelCapacity="$MODEL_CAPACITY" `
       modelVersion="$MODEL_VERSION" `
-      location="$RG_LOCATION" | Out-File -FilePath "$scriptDir\output.json" -Encoding utf8
+      location="$RG_LOCATION" | Out-File -FilePath "$scriptDir/output.json" -Encoding utf8
 
 # Parse the JSON file using native PowerShell cmdlets
 $outputJsonPath = Join-Path -Path $scriptDir -ChildPath "output.json"
@@ -38,18 +38,23 @@ $outputs = $jsonData.properties.outputs
 
 # Extract values from the JSON object
 $projectsEndpoint = $outputs.projectsEndpoint.value
+$openAIEndpoint = $outputs.openAIEndpoint.value
 $resourceGroupName = $outputs.resourceGroupName.value
 
 if ([string]::IsNullOrEmpty($projectsEndpoint)) {
     Write-Host "Error: projectsEndpoint not found. Possible deployment failure."
     exit -1
 }
+if ([string]::IsNullOrEmpty($openAIEndpoint)) {
+    Write-Host "Error: openAIEndpoint not found. Possible deployment failure."
+    exit -1
+}
 
 # Set the C# project path relative to the script directory
-$CSHARP_PROJECT_PATH = Join-Path -Path $scriptDir -ChildPath "..\CustomAgent.csproj"
+$CSHARP_PROJECT_PATH = Join-Path -Path $scriptDir -ChildPath "../CustomAgent.csproj"
 
 # Set the user secrets for the C# project
-dotnet user-secrets set "Azure:Endpoint" "$projectsEndpoint" --project "$CSHARP_PROJECT_PATH"
+dotnet user-secrets set "Azure:Endpoint" "$openAIEndpoint" --project "$CSHARP_PROJECT_PATH"
 dotnet user-secrets set "Azure:ModelName" "$MODEL_NAME" --project "$CSHARP_PROJECT_PATH"
 
 # Delete the output.json file
@@ -80,8 +85,8 @@ Write-Host "User role assignment succeeded."
 # Verify static content files exist
 Write-Host "Verifying prompt and instruction files exist..."
 
-$promptDirPath = Join-Path -Path $scriptDir -ChildPath "..\prompts"
-$instructionsDirPath = Join-Path -Path $scriptDir -ChildPath "..\instructions"
+$promptDirPath = Join-Path -Path $scriptDir -ChildPath "../prompts"
+$instructionsDirPath = Join-Path -Path $scriptDir -ChildPath "../instructions"
 $promptTemplatePath = Join-Path -Path $promptDirPath -ChildPath "prompt_template.md"
 
 # Check if directories and files exist
