@@ -29,7 +29,10 @@ param modelVersion string = '2024-11-20'
 param modelSkuName string = 'GlobalStandard'
 
 @description('Model deployment capacity')
-param modelCapacity int = 30
+param modelCapacity int = 20
+
+@description('Disable local auth for your AI Foundry resource')
+param disableLocalAuth bool = true
 
 @description('Unique suffix for the resources')
 @maxLength(8)
@@ -62,6 +65,7 @@ module foundry 'foundry.bicep' = {
     location: location
     tags: rootTags
     foundryResourceName: foundryResourceName
+    disableLocalAuth: disableLocalAuth
   }
 }
 

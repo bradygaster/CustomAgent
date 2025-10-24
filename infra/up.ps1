@@ -13,7 +13,8 @@ $RG_LOCATION = "eastus"
 $MODEL_NAME = "gpt-4o"
 $MODEL_VERSION = "2024-11-20"
 $AI_PROJECT_FRIENDLY_NAME = "Custom Agent"
-$MODEL_CAPACITY = 30
+$MODEL_CAPACITY = 10
+$DISABLE_LOCAL_AUTH = $false
 
 # Deploy the Azure resources and save output to JSON
 az deployment sub create `
@@ -24,6 +25,7 @@ az deployment sub create `
       modelName="$MODEL_NAME" `
       modelCapacity="$MODEL_CAPACITY" `
       modelVersion="$MODEL_VERSION" `
+      disableLocalAuth="$DISABLE_LOCAL_AUTH" `
       location="$RG_LOCATION" | Out-File -FilePath "$scriptDir/output.json" -Encoding utf8
 
 # Parse the JSON file using native PowerShell cmdlets

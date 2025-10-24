@@ -9,6 +9,9 @@ param tags object = {}
 @description('Location for the Azure AI Foundry resource')
 param location string
 
+@description('Disable local auth for your AI Foundry resource')
+param disableLocalAuth bool = true
+
 @description('Name of the Azure AI Foundry account')
 @minLength(3)
 @maxLength(24)
@@ -34,7 +37,7 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
       ipRules: []
     }
     publicNetworkAccess: 'Enabled'
-    disableLocalAuth: true
+    disableLocalAuth: disableLocalAuth
     defaultProject: aiProjectName
     associatedProjects: [aiProjectName]
   }
